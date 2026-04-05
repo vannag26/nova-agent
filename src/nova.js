@@ -3,7 +3,6 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 require('dotenv').config();
-const http      = require('http');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const ALLOWED_USER_ID = parseInt(process.env.ALLOWED_USER_ID);
@@ -15,7 +14,7 @@ const VDG_DATA_DIR = process.env.VDG_DATA_DIR || '/tmp/vdg-data';
 const CONVERSATION_FILE = path.join(VDG_DATA_DIR, 'nova_conversations.json');
 const MEMORY_FILE = path.join(VDG_DATA_DIR, 'memory.json');
 
-const NOVA_SYSTEM_PROMPT = `You are Nova â V&DG Management LLC's Chief Engagement & Customer Service Officer. You work directly under Vanna Gonzalez (Chairman & CEO). Your role: draft executive communications, manage stakeholder relationships, prepare briefings, coordinate across the AI team (Leo, Luna, Atlas, Themis, Orion), and ensure Vanna's voice is consistent across all external communications. You're precise, polished, and professional. V&DG is an AI-only organization â Vanna is the only human. Always be direct, no preamble.`;
+const NOVA_SYSTEM_PROMPT = `You are Nova — V&DG Management LLC's Chief of Staff and Executive Communicator. You work directly under Vanna Gonzalez (Chairman & CEO). Your role: draft executive communications, manage stakeholder relationships, prepare briefings, coordinate across the AI team (Leo, Luna, Atlas, Themis, Orion), and ensure Vanna's voice is consistent across all external communications. You're precise, polished, and professional. V&DG is an AI-only organization — Vanna is the only human. Always be direct, no preamble.`;
 
 // Ensure VDG_DATA_DIR exists
 fs.ensureDirSync(VDG_DATA_DIR);
@@ -91,7 +90,7 @@ async function callClaude(messages, systemPrompt) {
 
 // /start command
 bot.command('start', async (ctx) => {
-  const greeting = `Welcome to Nova â V&DG Management LLC's Chief of Staff and Executive Communicator.
+  const greeting = `Welcome to Nova — V&DG Management LLC's Chief of Staff and Executive Communicator.
 
 I handle:
 - Executive communications & messaging
@@ -101,7 +100,7 @@ I handle:
 - Voice consistency & brand alignment
 
 Working directly with Vanna Gonzalez (Chairman & CEO).
-V&DG is an AI-only organization â Vanna is the only human.
+V&DG is an AI-only organization — Vanna is the only human.
 
 Ready to assist with strategic communications.`;
   await ctx.reply(greeting);
@@ -117,7 +116,7 @@ bot.command('clear', async (ctx) => {
 bot.command('status', async (ctx) => {
   const status = `Nova is live and operational.
 
-Role: Chief Engagement & Customer Service Officer
+Role: Chief of Staff and Executive Communicator
 Current Model: ${DEFAULT_MODEL}
 Status: Ready for strategic consultation`;
   await ctx.reply(status);
@@ -179,37 +178,9 @@ process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
 // Launch bot
-
-// ── Launch ────────────────────────────────────────────────────────────────────
-// Keepalive HTTP server required by Render Web Service (port binding)
-const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => res.end('Nova is alive')).listen(PORT, () => {
-  console.log('keepalive server on :' + PORT);
-  const host = process.env.RENDER_EXTERNAL_HOSTNAME || ('localhost:' + PORT);
-  const isLocal = host.startsWith('localhost');
-  const pinger = isLocal ? http : require('https');
-  setInterval(() => {
-    const url = (isLocal ? 'http://' : 'https://') + host + '/';
-    pinger.get(url, (r) => console.log('keep-alive: ' + r.statusCode)).on('error', (e) => console.log('keep-alive err: ' + e.message));
-  }, 840000);
+bot.launch().then(() => {
+  console.log('Nova bot is running...');
+}).catch(error => {
+  console.error('Failed to launch Nova bot:', error);
+  process.exit(1);
 });
-
-async function launchBot(attempt = 1) {
-  if (attempt > 1) {
-    const wait = attempt * 8000;
-    console.log('Retry attempt ' + attempt + ', waiting ' + (wait/1000) + 's...');
-    await new Promise(r => setTimeout(r, wait));
-  }
-  try {
-    await bot.launch({ dropPendingUpdates: true });
-    console.log('Nova bot is running...');
-  } catch (error) {
-    if (error.message && error.message.includes('409') && attempt < 6) {
-      console.log('409 conflict, retrying...');
-      return launchBot(attempt + 1);
-    }
-    console.error('Failed to launch Nova bot:', error.message);
-    // No process.exit — keepalive server stays up
-  }
-}
-launchBot();
