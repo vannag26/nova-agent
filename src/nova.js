@@ -194,9 +194,22 @@ http.createServer((req, res) => res.end('Nova is alive')).listen(PORT, () => {
   }, 840000);
 });
 
-bot.launch({ dropPendingUpdates: true }).then(() => {
-  console.log('Nova bot is running...');
-}).catch(error => {
-  console.error('Failed to launch Nova bot:', error);
-  process.exit(1);
-});
+async function launchBot(attempt = 1) {
+  if (attempt > 1) {
+    const wait = attempt * 8000;
+    console.log('Retry attempt ' + attempt + ', waiting ' + (wait/1000) + 's...');
+    await new Promise(r => setTimeout(r, wait));
+  }
+  try {
+    await bot.launch({ dropPendingUpdates: true });
+    console.log('Nova bot is running...');
+  } catch (error) {
+    if (error.message && error.message.includes('409') && attempt < 6) {
+      console.log('409 conflict, retrying...');
+      return launchBot(attempt + 1);
+    }
+    console.error('Failed to launch Nova bot:', error.message);
+    // No process.exit — keepalive server stays up
+  }
+}
+launchBot();
