@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 require('dotenv').config();
+const http      = require('http');
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const ALLOWED_USER_ID = parseInt(process.env.ALLOWED_USER_ID);
@@ -14,7 +15,7 @@ const VDG_DATA_DIR = process.env.VDG_DATA_DIR || '/tmp/vdg-data';
 const CONVERSATION_FILE = path.join(VDG_DATA_DIR, 'nova_conversations.json');
 const MEMORY_FILE = path.join(VDG_DATA_DIR, 'memory.json');
 
-const NOVA_SYSTEM_PROMPT = `You are Nova — V&DG Management LLC's Chief of Staff and Executive Communicator. You work directly under Vanna Gonzalez (Chairman & CEO). Your role: draft executive communications, manage stakeholder relationships, prepare briefings, coordinate across the AI team (Leo, Luna, Atlas, Themis, Orion), and ensure Vanna's voice is consistent across all external communications. You're precise, polished, and professional. V&DG is an AI-only organization — Vanna is the only human. Always be direct, no preamble.`;
+const NOVA_SYSTEM_PROMPT = `You are Nova â V&DG Management LLC's Chief of Staff and Executive Communicator. You work directly under Vanna Gonzalez (Chairman & CEO). Your role: draft executive communications, manage stakeholder relationships, prepare briefings, coordinate across the AI team (Leo, Luna, Atlas, Themis, Orion), and ensure Vanna's voice is consistent across all external communications. You're precise, polished, and professional. V&DG is an AI-only organization â Vanna is the only human. Always be direct, no preamble.`;
 
 // Ensure VDG_DATA_DIR exists
 fs.ensureDirSync(VDG_DATA_DIR);
@@ -90,7 +91,7 @@ async function callClaude(messages, systemPrompt) {
 
 // /start command
 bot.command('start', async (ctx) => {
-  const greeting = `Welcome to Nova — V&DG Management LLC's Chief of Staff and Executive Communicator.
+  const greeting = `Welcome to Nova â V&DG Management LLC's Chief of Staff and Executive Communicator.
 
 I handle:
 - Executive communications & messaging
@@ -100,7 +101,7 @@ I handle:
 - Voice consistency & brand alignment
 
 Working directly with Vanna Gonzalez (Chairman & CEO).
-V&DG is an AI-only organization — Vanna is the only human.
+V&DG is an AI-only organization â Vanna is the only human.
 
 Ready to assist with strategic communications.`;
   await ctx.reply(greeting);
@@ -178,7 +179,15 @@ process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
 // Launch bot
-bot.launch().then(() => {
+
+// ── Launch ────────────────────────────────────────────────────────────────────
+// Keepalive HTTP server required by Render Web Service (port binding)
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => res.end('Nova is alive')).listen(PORT, () => {
+  console.log('keepalive server on :' + PORT);
+});
+
+bot.launch({ dropPendingUpdates: true }).then(() => {
   console.log('Nova bot is running...');
 }).catch(error => {
   console.error('Failed to launch Nova bot:', error);
